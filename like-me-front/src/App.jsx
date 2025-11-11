@@ -22,6 +22,7 @@ function App() {
   useEffect(() => {
     cargarPosts();
   }, []);
+  
 
   const crearPost = async (e) => {
     e.preventDefault();
