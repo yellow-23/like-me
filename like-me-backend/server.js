@@ -18,9 +18,20 @@ const pool = new Pool({
   port: 5432,
 });
 
+// Modelo: getPosts (ejemplo con manejo de errores)
+const getPosts = async () => {
+  try {
+    const result = await pool.query("SELECT * FROM posts ORDER BY id DESC");
+    return result.rows;
+  } catch (error) {
+    console.error("Error al obtener posts:", error);
+    throw new Error("Error en la consulta SQL");
+  }
+};
+
 app.get("/posts", async (req, res) => {
   try {
-    const { rows } = await pool.query("SELECT * FROM posts ORDER BY id DESC");
+    const rows = await getPosts();
     res.json(rows);
   } catch (error) {
     console.error("Error en GET /posts:", error);
@@ -62,6 +73,80 @@ app.put("/posts/like/:id", async (req, res) => {
   } catch (error) {
     console.error("Error en PUT /posts/like/:id:", error);
     res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+// PUT - actualizar un post en general
+app.put("/posts/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { titulo, img, descripcion, likes } = req.body;
+
+    // Construir query dinámicamente basado en campos proporcionados
+    const updates = [];
+    const values = [];
+    let paramIndex = 1;
+
+    if (titulo !== undefined) {
+      updates.push(`titulo = $${paramIndex++}`);
+      values.push(titulo);
+    }
+    if (img !== undefined) {
+      updates.push(`img = $${paramIndex++}`);
+      values.push(img);
+    }
+    if (descripcion !== undefined) {
+      updates.push(`descripcion = $${paramIndex++}`);
+      values.push(descripcion);
+    }
+    if (likes !== undefined) {
+      updates.push(`likes = $${paramIndex++}`);
+      values.push(likes);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ message: "No fields to update" });
+    }
+
+    const query = `
+      UPDATE posts 
+      SET ${updates.join(', ')}
+      WHERE id = $${paramIndex} 
+      RETURNING *;
+    `;
+    values.push(id);
+
+    const result = await pool.query(query, values);
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: "Post no encontrado" });
+    }
+
+    res.json(result.rows[0]);
+
+  } catch (error) {
+    console.error("Error en PUT /posts/:id:", error);
+    res.status(500).json({ error: "Error al actualizar el post" });
+  }
+});
+
+// DELETE - eliminar un post
+app.delete("/posts/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const query = "DELETE FROM posts WHERE id = $1 RETURNING *;";
+    const result = await pool.query(query, [id]);
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: "Post no encontrado" });
+    }
+
+    res.json({ message: "Post eliminado correctamente" });
+
+  } catch (error) {
+    console.error("Error en DELETE /posts/:id:", error);
+    res.status(500).json({ error: "Error al eliminar el post" });
   }
 });
 

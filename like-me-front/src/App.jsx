@@ -44,16 +44,34 @@ function App() {
     }
   };
 
-  const darLike = async (id) => {
+  const darLike = async (id, likesActuales) => {
     try {
-      const res = await fetch(`${API}/like/${id}`, {
+      const res = await fetch(`${API}/${id}`, {
         method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ likes: likesActuales + 1 }),
       });
       if (res.ok) {
         cargarPosts();
       }
     } catch (error) {
       console.error("Error al dar like:", error);
+    }
+  };
+
+  const borrarPost = async (id) => {
+    try {
+      const confirmed = confirm("¿Eliminar este post?");
+      if (!confirmed) return;
+      const res = await fetch(`${API}/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        cargarPosts();
+      } else {
+        const data = await res.json();
+        alert(data.message || "Error al eliminar");
+      }
+    } catch (error) {
+      console.error("Error al borrar post:", error);
     }
   };
 
@@ -86,7 +104,7 @@ function App() {
               <p>{p.descripcion}</p>
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                 <button
-                  onClick={() => darLike(p.id)}
+                  onClick={() => darLike(p.id, p.likes || 0)}
                   style={{ 
                     fontSize: "1.2rem", 
                     padding: "0.2rem 0.5rem",
@@ -96,6 +114,18 @@ function App() {
                   }}
                 >
                   ❤️
+                </button>
+                <button
+                  onClick={() => borrarPost(p.id)}
+                  style={{
+                    marginLeft: "0.4rem",
+                    background: "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                    color: "#c00",
+                  }}
+                >
+                  🗑️
                 </button>
                 <span style={{ fontSize: "0.9rem" }}>{p.likes || 0}</span>
               </div>
